@@ -1,4 +1,6 @@
 export type ChainInfo={id:number;name:string;symbol:string;rpc:string;explorer:string;color:string};
+
+// ====== MAINNETS ======
 export const CHAINS:Record<string,ChainInfo>={
   ethereum:{id:1,name:"Ethereum",symbol:"ETH",rpc:"https://eth.llamarpc.com",explorer:"https://etherscan.io",color:"#B8A9E8"},
   arbitrum:{id:42161,name:"Arbitrum",symbol:"ETH",rpc:"https://arb1.arbitrum.io/rpc",explorer:"https://arbiscan.io",color:"#4ECDC4"},
@@ -9,6 +11,12 @@ export const CHAINS:Record<string,ChainInfo>={
   avalanche:{id:43114,name:"Avalanche",symbol:"AVAX",rpc:"https://api.avax.network/ext/bc/C/rpc",explorer:"https://snowtrace.io",color:"#FF6B6B"},
   zksync:{id:324,name:"zkSync",symbol:"ETH",rpc:"https://mainnet.era.zksync.io",explorer:"https://explorer.zksync.io",color:"#B8A9E8"},
   linea:{id:59144,name:"Linea",symbol:"ETH",rpc:"https://rpc.linea.build",explorer:"https://lineascan.build",color:"#4ECDC4"},
-  scroll:{id:534352,name:"Scroll",symbol:"ETH",rpc:"https://rpc.scroll.io",explorer:"https://scrollscan.com",color:"#F5A623"}
+  scroll:{id:534352,name:"Scroll",symbol:"ETH",rpc:"https://rpc.scroll.io",explorer:"https://scrollscan.com",color:"#F5A623"},
+
+  // ====== TESTNETS ======
+  "sepolia":{id:11155111,name:"Sepolia Testnet",symbol:"ETH",rpc:"https://rpc.sepolia.org",explorer:"https://sepolia.etherscan.io",color:"#8B5CF6"},
+  "base-sepolia":{id:84532,name:"Base Sepolia",symbol:"ETH",rpc:"https://sepolia.base.org",explorer:"https://sepolia.basescan.org",color:"#4ECDC4"},
+  "polygon-amoy":{id:80002,name:"Polygon Amoy",symbol:"MATIC",rpc:"https://rpc-amoy.polygon.technology",explorer:"https://amoy.polygonscan.com",color:"#B8A9E8"},
+  "bsc-testnet":{id:97,name:"BSC Testnet",symbol:"BNB",rpc:"https://bsc-testnet-rpc.publicnode.com",explorer:"https://testnet.bscscan.com",color:"#F5A623"},
 };
 export function chainById(id:number):ChainInfo|undefined{return Object.values(CHAINS).find(c=>c.id===id)}
