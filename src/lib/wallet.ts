@@ -169,6 +169,28 @@ export async function connectMetaMask(): Promise<WalletState> {
   };
 }
 
+// ====== AUTO-CONNECT METAMASK (silent, no popup) ======
+export async function autoConnectMetaMask(): Promise<WalletState | null> {
+  if (typeof window === "undefined" || !window.ethereum) return null;
+  try {
+    const p = new ethers.BrowserProvider(window.ethereum);
+    // eth_accounts: silent — returns already-authorized accounts without prompting
+    const accs: string[] = await p.send("eth_accounts", []);
+    if (!accs.length) return null;
+    const net = await p.getNetwork();
+    const bal = await p.getBalance(accs[0]);
+    return {
+      address: accs[0],
+      chainId: Number(net.chainId),
+      balance: ethers.formatEther(bal),
+      provider: p,
+      type: "metamask",
+    };
+  } catch {
+    return null; // User hasn't authorized, or no wallet
+  }
+}
+
 // ====== DISCONNECT ======
 export async function disconnectWallet(state: WalletState | null): Promise<void> {
   if (!state) return;

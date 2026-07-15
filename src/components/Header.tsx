@@ -11,9 +11,10 @@ interface Props {
   onTab: (tab: string) => void;
   onConnect: () => void;
   onDisconnect: () => void;
+  connecting?: boolean;
 }
 
-export default function Header({ addr, bal, cid, walletType, tab, onTab, onConnect, onDisconnect }: Props) {
+export default function Header({ addr, bal, cid, walletType, tab, onTab, onConnect, onDisconnect, connecting }: Props) {
   const cc = chainById(cid);
   const short = (a: string) => a ? a.slice(0, 6) + "..." + a.slice(-4) : "";
 
@@ -42,14 +43,20 @@ export default function Header({ addr, bal, cid, walletType, tab, onTab, onConne
           </div>
 
           {!addr ? (
-            <button onClick={onConnect} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#B8A9E8] text-[#1A1A1A] hover:bg-[#A89AD8] shadow-sm hover:shadow-md transition-all">
-              <Wallet size={14}/><span className="hidden sm:inline">Connect Wallet</span>
-            </button>
+            connecting ? (
+              <button disabled className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#F0F0F0] text-[#6B6B6B]">
+                <Loader2 size={14} className="animate-spin"/><span className="hidden sm:inline">Connecting...</span>
+              </button>
+            ) : (
+              <button onClick={onConnect} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#B8A9E8] text-[#1A1A1A] hover:bg-[#A89AD8] shadow-sm hover:shadow-md transition-all">
+                <Wallet size={14}/><span className="hidden sm:inline">Connect Wallet</span>
+              </button>
+            )
           ) : (
             <div className="flex items-center gap-2">
               {walletType !== "none" && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#4ECDC4]/10 text-[#115E59] border border-[#4ECDC4]/20 hidden sm:inline">
-                  {walletType === "walletconnect" ? "📱 Mobile" : "🖥️ Extension"}
+                  {walletType === "walletconnect" ? "📱 Mobile" : "🦊 MetaMask"}
                 </span>
               )}
               {cc && (

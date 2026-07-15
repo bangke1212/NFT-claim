@@ -3,7 +3,13 @@ import { ethers } from "ethers";
 import { CHAINS } from "@/lib/chains";
 import { NFT_ABI } from "@/lib/abi";
 import { loadTargets, saveTargets, type Target } from "@/lib/storage";
-import { disconnectWallet, doSwitchChain, type WalletState, type WalletType } from "@/lib/wallet";
+import {
+  disconnectWallet,
+  doSwitchChain,
+  autoConnectMetaMask,
+  type WalletState,
+  type WalletType,
+} from "@/lib/wallet";
 import Header from "@/components/Header";
 import Toast from "@/components/Toast";
 import WalletModal from "@/components/WalletModal";
@@ -27,10 +33,76 @@ export default function App() {
   const [walletState, setWalletState] = useState<WalletState | null>(null);
   const [showWalletSelect, setShowWalletSelect] = useState(false);
   const [showAddTarget, setShowAddTarget] = useState(false);
+  const [autoConnecting, setAutoConnecting] = useState(true);
 
   useEffect(() => { setTargets(loadTargets()); }, []);
   const notify = useCallback((m: string, t = "info") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
   const copy = (x: string) => { navigator.clipboard?.writeText(x); notify("Copied!"); };
+
+  // ====== AUTO-CONNECT METAMASK ON MOUNT ======
+  useEffect(() => {
+    let cancelled = false;
+    async function tryAutoConnect() {
+      try {
+        const ws = await autoConnectMetaMask();
+        if (cancelled) return;
+        if (ws) {
+          setWalletState(ws);
+          setWalletType("metamask");
+          setAddr(ws.address);
+          setCid(ws.chainId);
+          setBal(ws.balance);
+        }
+      } catch {
+        // silent fail — user simply hasn't authorized yet
+      } finally {
+        if (!cancelled) setAutoConnecting(false);
+      }
+    }
+    tryAutoConnect();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ====== LISTEN FOR METAMASK ACCOUNT / CHAIN CHANGES ======
+  useEffect(() => {
+    if (!window.ethereum || walletType !== "metamask") return;
+
+    const handleAccountsChanged = async (...args: any[]) => {
+      // args may be [accounts] or [{ accounts }] depending on MetaMask version
+      const raw = args[0];
+      const accounts: string[] = Array.isArray(raw) ? raw : raw?.accounts ?? [];
+      if (!accounts.length) {
+        // All accounts disconnected
+        disconnect();
+      } else if (walletState) {
+        try {
+          const p = walletState.provider;
+          const bal = await p.getBalance(accounts[0]);
+          setAddr(accounts[0]);
+          setBal(ethers.formatEther(bal));
+        } catch { /* ignore */ }
+      }
+    };
+
+    const handleChainChanged = async (chainIdHex: string) => {
+      const newChainId = parseInt(chainIdHex, 16);
+      setCid(newChainId);
+      if (walletState) {
+        try {
+          const bal = await walletState.provider.getBalance(walletState.address);
+          setBal(ethers.formatEther(bal));
+        } catch { /* ignore */ }
+      }
+    };
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
+
+    return () => {
+      window.ethereum?.removeListener?.("accountsChanged", handleAccountsChanged);
+      window.ethereum?.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, [walletType, walletState]);
 
   const onWalletConnect = (ws: WalletState, type: WalletType) => {
     setWalletState(ws);
@@ -134,6 +206,7 @@ export default function App() {
       <Header
         addr={addr} bal={bal} cid={cid} walletType={walletType} tab={tab}
         onTab={setTab} onConnect={() => setShowWalletSelect(true)} onDisconnect={disconnect}
+        connecting={autoConnecting}
       />
 
       <Toast toast={toast} />
