@@ -23,6 +23,17 @@ export default function Targets({ targets, addr, busy, onAdd, onClaim, onDelete,
         <div><h2 className="text-base font-bold">Mint / Claim Targets</h2><p className="text-[11px] text-[#9B9B9B] mt-0.5">{targets.length} targets · stored in localStorage</p></div>
         <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#B8A9E8] text-[#1A1A1A] hover:bg-[#A89AD8] shadow-sm hover:shadow-md"><Plus size={14}/> Add Target</button>
       </div>
+
+      {!addr && targets.length > 0 && (
+        <div className="mb-3 px-4 py-3 rounded-xl bg-[#F5A623]/10 border border-[#F5A623]/30 flex items-center gap-3">
+          <span className="text-lg">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[#92400E]">Wallet belum connect</p>
+            <p className="text-[11px] text-[#92400E]/70">Buka halaman ini di <strong>MetaMask Mobile browser</strong> atau klik Connect Wallet di kanan atas.</p>
+          </div>
+        </div>
+      )}
+
       {targets.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#F0F0F0] p-12 text-center"><TargetIcon size={32} className="mx-auto mb-3 text-[#E0E0E0]"/><p className="text-sm text-[#6B6B6B] mb-1">No targets yet</p><p className="text-[11px] text-[#9B9B9B]">Add your first target to get started</p></div>
       ) : (
