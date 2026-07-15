@@ -58,7 +58,7 @@ export default function AddTargetModal({ show, onClose, onAdd, notify }: Props) 
             </Field>
             <Field label="Method">
               <select value={form.method} onChange={e => update("method", e.target.value)} className="w-full px-4 py-2 text-sm border border-[#F0F0F0] rounded-full bg-white">
-                {["claim","mint","freeMint","publicMint","safeMint"].map(m => <option key={m} value={m}>{m}()</option>)}
+                {["claim","mint","freeMint","publicMint","safeMint","mintListed","whitelistMint","publicSaleMint","purchase","buy"].map(m => <option key={m} value={m}>{m}()</option>)}
               </select>
             </Field>
           </div>

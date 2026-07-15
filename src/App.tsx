@@ -217,15 +217,42 @@ export default function App() {
       let tx: ethers.ContractTransaction | null = null;
       let lastErr: any = null;
 
-      const attempts: Array<() => Promise<ethers.ContractTransaction>> = [
+      // Build attempts based on method type
+      const needsProof = ["mintListed","whitelistMint","presaleMint"].includes(method);
+      const isSimplePayable = ["purchase","buy","buyMint","publicSaleMint"].includes(method);
+      const emptyProof: string[] = []; // bytes32[] kosong — beberapa contract terima ini
+      
+      const attempts: Array<() => Promise<ethers.ContractTransaction>> = [];
+      
+      if (needsProof) {
+        // Method butuh merkle proof — coba dengan proof kosong
+        const method3arg = ['mintListed','presaleMint'].includes(method);
+        attempts.push(
+          method3arg
+            ? () => ctr[method](t.amount, emptyProof, 5, { value })
+            : () => ctr[method](t.amount, emptyProof, { value }),
+          method3arg
+            ? () => ctr[method](t.amount, emptyProof, 5)  // free fallback
+            : () => ctr[method](t.amount, emptyProof),
+        );
+      } else if (isSimplePayable) {
+        // Method payable 1 arg
+        attempts.push(
+          () => ctr[method](t.amount, { value }),
+          () => ctr[method](t.amount), // free fallback
+        );
+      }
+      
+      // Always try standard signatures
+      attempts.push(
         () => ctr[method](t.amount, { value }),
         () => ctr[method](addr, t.amount, { value }),
         () => ctr[method]({ value }),
         () => ctr[method](addr, { value }),
-      ];
+      );
 
-      // If price was detected, also try without value as fallback
-      if (value > 0n) {
+      // Free mint fallbacks
+      if (value > 0n || needsProof) {
         attempts.push(
           () => ctr[method](t.amount),
           () => ctr[method](addr, t.amount),

@@ -12,11 +12,14 @@ export const CHAINS:Record<string,ChainInfo>={
   zksync:{id:324,name:"zkSync",symbol:"ETH",rpc:"https://mainnet.era.zksync.io",explorer:"https://explorer.zksync.io",color:"#B8A9E8"},
   linea:{id:59144,name:"Linea",symbol:"ETH",rpc:"https://rpc.linea.build",explorer:"https://lineascan.build",color:"#4ECDC4"},
   scroll:{id:534352,name:"Scroll",symbol:"ETH",rpc:"https://rpc.scroll.io",explorer:"https://scrollscan.com",color:"#F5A623"},
+  // Robinhood Chain (Arbitrum L2)
+  robinhood:{id:4663,name:"Robinhood",symbol:"ETH",rpc:"https://rpc.mainnet.chain.robinhood.com",explorer:"https://robinhoodchain.blockscout.com",color:"#22C55E"},
 
   // ====== TESTNETS ======
   "sepolia":{id:11155111,name:"Sepolia Testnet",symbol:"ETH",rpc:"https://rpc.sepolia.org",explorer:"https://sepolia.etherscan.io",color:"#8B5CF6"},
   "base-sepolia":{id:84532,name:"Base Sepolia",symbol:"ETH",rpc:"https://sepolia.base.org",explorer:"https://sepolia.basescan.org",color:"#4ECDC4"},
   "polygon-amoy":{id:80002,name:"Polygon Amoy",symbol:"MATIC",rpc:"https://rpc-amoy.polygon.technology",explorer:"https://amoy.polygonscan.com",color:"#B8A9E8"},
   "bsc-testnet":{id:97,name:"BSC Testnet",symbol:"BNB",rpc:"https://bsc-testnet-rpc.publicnode.com",explorer:"https://testnet.bscscan.com",color:"#F5A623"},
+  "robinhood-testnet":{id:46630,name:"Robinhood Testnet",symbol:"ETH",rpc:"https://rpc.testnet.chain.robinhood.com",explorer:"https://explorer.testnet.chain.robinhood.com",color:"#86EFAC"},
 };
 export function chainById(id:number):ChainInfo|undefined{return Object.values(CHAINS).find(c=>c.id===id)}
