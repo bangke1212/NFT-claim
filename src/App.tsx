@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { CHAINS } from "@/lib/chains";
 import { NFT_ABI } from "@/lib/abi";
@@ -7,8 +7,6 @@ import {
   disconnectWallet,
   doSwitchChain,
   autoConnectMetaMask,
-  autoConnectWalletConnect,
-  isMobile,
   type WalletState,
   type WalletType,
 } from "@/lib/wallet";
@@ -41,50 +39,31 @@ export default function App() {
   const notify = useCallback((m: string, t = "info") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
   const copy = (x: string) => { navigator.clipboard?.writeText(x); notify("Copied!"); };
 
-  // ====== AUTO-CONNECT ON MOUNT (MetaMask + WalletConnect) ======
+  // ====== AUTO-CONNECT METAMASK ON MOUNT ======
   useEffect(() => {
     let cancelled = false;
-    const mobile = isMobile();
-
     async function tryAutoConnect() {
-      // 1) Desktop: coba MetaMask silent
-      if (!mobile) {
-        try {
-          const ws = await autoConnectMetaMask();
-          if (cancelled) return;
-          if (ws) {
-            setWalletState(ws);
-            setWalletType("metamask");
-            setAddr(ws.address);
-            setCid(ws.chainId);
-            setBal(ws.balance);
-            setAutoConnecting(false);
-            return;
-          }
-        } catch { /* silent */ }
-      }
-
-      // 2) Mobile (atau desktop fallback): coba restore WalletConnect session
       try {
-        const ws = await autoConnectWalletConnect();
+        const ws = await autoConnectMetaMask();
         if (cancelled) return;
         if (ws) {
           setWalletState(ws);
-          setWalletType("walletconnect");
+          setWalletType("metamask");
           setAddr(ws.address);
           setCid(ws.chainId);
           setBal(ws.balance);
         }
-      } catch { /* silent */ }
-
-      if (!cancelled) setAutoConnecting(false);
+      } catch {
+        // silent — user belum authorize
+      } finally {
+        if (!cancelled) setAutoConnecting(false);
+      }
     }
-
     tryAutoConnect();
     return () => { cancelled = true; };
   }, []);
 
-  // ====== LISTEN FOR METAMASK ACCOUNT / CHAIN CHANGES ======
+  // ====== METAMASK EVENT LISTENERS ======
   useEffect(() => {
     if (!window.ethereum || walletType !== "metamask") return;
 
@@ -123,68 +102,17 @@ export default function App() {
     };
   }, [walletType, walletState]);
 
-  // ====== LISTEN FOR WALLETCONNECT ACCOUNT / CHAIN CHANGES ======
-  useEffect(() => {
-    if (walletType !== "walletconnect" || !walletState) return;
-
-    const provider = walletState.provider;
-    let cleanup = false;
-
-    const onAccountsChanged = (accounts: string[]) => {
-      if (cleanup) return;
-      if (!accounts.length) {
-        disconnect();
-      } else {
-        setAddr(accounts[0]);
-        provider.getBalance(accounts[0]).then(b => setBal(ethers.formatEther(b))).catch(() => {});
-      }
-    };
-
-    const onChainChanged = (chainId: number) => {
-      if (cleanup) return;
-      setCid(chainId);
-      provider.getBalance(walletState.address).then(b => setBal(ethers.formatEther(b))).catch(() => {});
-    };
-
-    const onDisconnect = () => {
-      if (cleanup) return;
-      disconnect();
-    };
-
-    // WalletConnect EthereumProvider emits events directly
-    try {
-      const raw = (provider as any)?.provider; // raw EthereumProvider
-      if (raw) {
-        raw.on("accountsChanged", onAccountsChanged);
-        raw.on("chainChanged", onChainChanged);
-        raw.on("disconnect", onDisconnect);
-      }
-    } catch {}
-
-    return () => {
-      cleanup = true;
-      try {
-        const raw = (provider as any)?.provider;
-        if (raw) {
-          raw.removeListener("accountsChanged", onAccountsChanged);
-          raw.removeListener("chainChanged", onChainChanged);
-          raw.removeListener("disconnect", onDisconnect);
-        }
-      } catch {}
-    };
-  }, [walletType, walletState]);
-
   const onWalletConnect = (ws: WalletState, type: WalletType) => {
     setWalletState(ws);
     setWalletType(type);
     setAddr(ws.address);
     setCid(ws.chainId);
     setBal(ws.balance);
-    notify(`Connected via ${type === "walletconnect" ? "WalletConnect" : "Browser"}!`, "success");
+    notify("Connected to MetaMask!", "success");
   };
 
   const disconnect = async () => {
-    await disconnectWallet(walletState);
+    await disconnectWallet();
     setAddr("");
     setCid(0);
     setBal("0");

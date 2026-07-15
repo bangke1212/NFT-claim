@@ -49,14 +49,14 @@ export default function Header({ addr, bal, cid, walletType, tab, onTab, onConne
               </button>
             ) : (
               <button onClick={onConnect} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#B8A9E8] text-[#1A1A1A] hover:bg-[#A89AD8] shadow-sm hover:shadow-md transition-all">
-                <Wallet size={14}/><span className="hidden sm:inline">Connect Wallet</span>
+                <Wallet size={14}/><span className="hidden sm:inline">Connect MetaMask</span>
               </button>
             )
           ) : (
             <div className="flex items-center gap-2">
-              {walletType !== "none" && (
+              {walletType === "metamask" && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#4ECDC4]/10 text-[#115E59] border border-[#4ECDC4]/20 hidden sm:inline">
-                  {walletType === "walletconnect" ? "📱 Mobile" : "🦊 MetaMask"}
+                  🦊 MetaMask
                 </span>
               )}
               {cc && (
