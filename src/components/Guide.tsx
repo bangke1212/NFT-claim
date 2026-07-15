@@ -7,11 +7,12 @@ export default function Guide() {
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Play size={14} className="text-[#4ADE80]"/> How to Use</h3>
         <div className="space-y-3">
           {[
-            { n: 1, t: "Install Wallet", d: "MetaMask or Rabby browser extension" },
-            { n: 2, t: "Connect Wallet", d: "Click Connect Wallet button top-right — supports extension + mobile WalletConnect" },
-            { n: 3, t: "Add Target", d: "Fill: name, contract address, chain, method" },
-            { n: 4, t: "Click Claim", d: "Bot auto-switches chain → auto-approves → mints" },
-            { n: 5, t: "Check Status", d: "Target status auto-updates after TX confirmation" },
+            { n: 1, t: "Install MetaMask", d: "Desktop: MetaMask extension. Mobile: MetaMask app dari Play Store / App Store." },
+            { n: 2, t: "Connect Wallet", d: "Auto-connect saat halaman load. Di mobile Chrome, klik 'Open in MetaMask App' untuk sinkron." },
+            { n: 3, t: "Add Target", d: "Isi: nama project, contract address, chain, method (claim/mint/freeMint/publicMint/safeMint)." },
+            { n: 4, t: "Probe Contract (opsional)", d: "Cek status sale, total supply, price sebelum claim. Hindari TX gagal." },
+            { n: 5, t: "Click Claim", d: "Bot auto-switch chain → auto-detect price → kirim ETH jika paid mint → claim." },
+            { n: 6, t: "Check Status", d: "Status target auto-update: waiting → monitoring → claimed / failed." },
           ].map(s => (
             <div key={s.n} className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold text-[#5B21B6] bg-[#B8A9E8]/15 border border-[#B8A9E8]/30">{s.n}</div>
@@ -23,7 +24,7 @@ export default function Guide() {
 
       <div className="bg-white rounded-2xl border border-[#F0F0F0] p-6">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Settings size={14} className="text-[#B8A9E8]"/> Deploy to Vercel</h3>
-        <p className="text-xs text-[#6B6B6B] mb-3">This app is built with Vite + React. Import repo to Vercel and deploy.</p>
+        <p className="text-xs text-[#6B6B6B] mb-3">Built with Vite + React + ethers.js v6. One-click deploy.</p>
         <a href="https://vercel.com/new" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full bg-[#1A1A1A] text-white hover:bg-[#333]"><ExternalLink size={12}/> Open Vercel</a>
       </div>
 
@@ -32,8 +33,8 @@ export default function Guide() {
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
             ["Framework", "Vite + React 18"],
-            ["Wallet", "ethers.js v6"],
-            ["Mobile", "WalletConnect v2"],
+            ["Wallet", "ethers.js v6 + MetaMask"],
+            ["Mobile", "MetaMask App Deep Link"],
             ["Chains", "10 EVM Networks"],
             ["Styling", "Tailwind CSS"],
             ["Deploy", "Vercel"],
