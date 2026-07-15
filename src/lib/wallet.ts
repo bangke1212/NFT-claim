@@ -16,7 +16,9 @@ export function isMobile(): boolean {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+// ⚠️ GANTI dengan Project ID asli dari https://cloud.walletconnect.com/
 const WC_PROJECT_ID = "9b1e8c0e2d3f4a5b6c7d8e9f0a1b2c3d";
+
 const WC_METADATA = {
   name: "NFT Auto Claim Bot",
   description: "Auto Claim / Auto Mint / Auto Approve EVM",
@@ -24,107 +26,43 @@ const WC_METADATA = {
   icons: [],
 };
 
-// ====== MOBILE: SignClient-based deep link ======
-let signClient: any = null;
-let mobileApproval: (() => Promise<any>) | null = null;
-let mobileUri: string = "";
+// ====== WALLETCONNECT — UNIFIED (Desktop QR + Mobile Deep Link) ======
+let wcProvider: any = null; // simpan raw provider untuk disconnect
 
-async function getSignClient(): Promise<any> {
-  if (signClient) return signClient;
-  const { SignClient } = await import("@walletconnect/sign-client");
-  signClient = await SignClient.init({
-    projectId: WC_PROJECT_ID,
-    metadata: WC_METADATA,
-  });
-  return signClient;
-}
-
-// Step 1: Generate URI for mobile deep linking
-export async function startMobilePairing(chainId: number = 1): Promise<{ uri: string; wallets: MobileWalletInfo[] }> {
-  const client = await getSignClient();
-
-  // Clear any stale state
-  mobileApproval = null;
-  mobileUri = "";
-
-  const { uri, approval } = await client.connect({
-    requiredNamespaces: {
-      eip155: {
-        methods: [
-          "eth_sendTransaction",
-          "eth_signTransaction",
-          "eth_sign",
-          "personal_sign",
-          "eth_signTypedData",
-          "eth_signTypedData_v4",
-          "wallet_switchEthereumChain",
-          "wallet_addEthereumChain",
-        ],
-        chains: [`eip155:${chainId}`],
-        events: ["chainChanged", "accountsChanged"],
-      },
-    },
-  });
-
-  mobileUri = uri;
-  mobileApproval = approval;
-
-  return {
-    uri,
-    wallets: MOBILE_WALLETS,
-  };
-}
-
-// Step 2: After user opens wallet and approves, complete the connection
-export async function finishMobilePairing(): Promise<WalletState> {
-  if (!mobileApproval) throw new Error("No pending pairing. Click 'Connect' first.");
-
-  const session = await mobileApproval();
-  mobileApproval = null;
-
-  // Get account from session
-  const eipAccounts = session.namespaces?.eip155?.accounts || [];
-  if (!eipAccounts.length) throw new Error("No accounts returned from wallet");
-
-  const [, chainIdStr, address] = eipAccounts[0].split(":");
-  const chainId = parseInt(chainIdStr, 10);
-
-  // Create EthereumProvider from the session topic
+export async function connectWalletConnect(chainId: number = 1): Promise<WalletState> {
   const { EthereumProvider } = await import("@walletconnect/ethereum-provider");
-  const provider = await EthereumProvider.init({
-    projectId: WC_PROJECT_ID,
-    chains: [chainId],
-    showQrModal: false,
-    metadata: WC_METADATA,
-  });
-
-  await provider.connect({ pairingTopic: session.topic });
-  const accounts: string[] = await provider.enable();
-
-  if (!accounts.length) throw new Error("Failed to enable provider");
-
-  const ep = new ethers.BrowserProvider(provider);
-  const bal = await ep.getBalance(accounts[0]);
-
-  return {
-    address: accounts[0],
-    chainId,
-    balance: ethers.formatEther(bal),
-    provider: ep,
-    type: "walletconnect",
-  };
-}
-
-// ====== DESKTOP: EthereumProvider with QR modal ======
-export async function connectWalletConnectDesktop(chainId: number = 1): Promise<WalletState> {
-  const { EthereumProvider } = await import("@walletconnect/ethereum-provider");
+  const mobile = isMobile();
 
   const provider = await EthereumProvider.init({
     projectId: WC_PROJECT_ID,
     chains: [chainId],
     optionalChains: [1, 42161, 8453, 10, 137, 56, 43114, 324, 59144, 534352],
+    // Desktop: QR modal — Mobile: WalletConnect modal tampilkan list wallet app
     showQrModal: true,
-    qrModalOptions: { themeMode: "light" },
+    qrModalOptions: {
+      themeMode: "light",
+      // Mobile: tampilkan daftar wallet untuk deep-link
+      ...(mobile ? {
+        mobileWallets: [
+          {
+            id: "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96", // MetaMask
+            name: "MetaMask",
+            links: {
+              native: "metamask://",
+              universal: "https://metamask.app.link",
+            },
+          },
+          {
+            id: "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0", // Trust
+            name: "Trust Wallet",
+            links: {
+              native: "trust://",
+              universal: "https://link.trustwallet.com",
+            },
+          },
+        ],
+      } : {}),
+    },
     metadata: WC_METADATA,
     rpcMap: {
       1: "https://eth.llamarpc.com",
@@ -136,7 +74,12 @@ export async function connectWalletConnectDesktop(chainId: number = 1): Promise<
     },
   });
 
+  wcProvider = provider;
+
+  // enable() → desktop: buka QR modal, mobile: deep-link ke wallet app
   const accounts: string[] = await provider.enable();
+  if (!accounts.length) throw new Error("No accounts returned from wallet");
+
   const address = accounts[0];
   const ep = new ethers.BrowserProvider(provider);
   const net = await ep.getNetwork();
@@ -151,7 +94,41 @@ export async function connectWalletConnectDesktop(chainId: number = 1): Promise<
   };
 }
 
-// ====== METAMASK EXTENSION ======
+// ====== AUTO-CONNECT WALLETCONNECT (restore session tanpa popup) ======
+export async function autoConnectWalletConnect(): Promise<WalletState | null> {
+  try {
+    const { EthereumProvider } = await import("@walletconnect/ethereum-provider");
+
+    const provider = await EthereumProvider.init({
+      projectId: WC_PROJECT_ID,
+      chains: [1],
+      optionalChains: [1, 42161, 8453, 10, 137, 56, 43114, 324, 59144, 534352],
+      showQrModal: false, // silent — hanya restore session yg sudah ada
+      metadata: WC_METADATA,
+    });
+
+    const accounts: string[] = await provider.enable();
+    if (!accounts.length) return null;
+
+    wcProvider = provider;
+    const address = accounts[0];
+    const ep = new ethers.BrowserProvider(provider);
+    const net = await ep.getNetwork();
+    const bal = await ep.getBalance(address);
+
+    return {
+      address,
+      chainId: Number(net.chainId),
+      balance: ethers.formatEther(bal),
+      provider: ep,
+      type: "walletconnect",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ====== METAMASK EXTENSION (Desktop) ======
 export async function connectMetaMask(): Promise<WalletState> {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("No browser wallet detected. Install MetaMask or Rabby.");
@@ -174,7 +151,6 @@ export async function autoConnectMetaMask(): Promise<WalletState | null> {
   if (typeof window === "undefined" || !window.ethereum) return null;
   try {
     const p = new ethers.BrowserProvider(window.ethereum);
-    // eth_accounts: silent — returns already-authorized accounts without prompting
     const accs: string[] = await p.send("eth_accounts", []);
     if (!accs.length) return null;
     const net = await p.getNetwork();
@@ -187,25 +163,28 @@ export async function autoConnectMetaMask(): Promise<WalletState | null> {
       type: "metamask",
     };
   } catch {
-    return null; // User hasn't authorized, or no wallet
+    return null;
   }
 }
 
 // ====== DISCONNECT ======
 export async function disconnectWallet(state: WalletState | null): Promise<void> {
   if (!state) return;
-  if (state.type === "walletconnect") {
-    if (signClient) {
+  if (state.type === "walletconnect" && wcProvider) {
+    try {
+      await wcProvider.disconnect();
+    } catch {
+      // fallback: coba putuskan semua session
       try {
-        const sessions = signClient.session.getAll();
+        const sessions = wcProvider?.signer?.session?.getAll?.() || [];
         for (const s of sessions) {
-          try { await signClient.disconnect({ topic: s.topic, reason: { code: 6000, message: "User disconnected" } }); } catch {}
+          try {
+            await wcProvider.disconnect({ topic: s.topic, reason: { code: 6000, message: "User disconnected" } });
+          } catch {}
         }
       } catch {}
     }
-    signClient = null;
-    mobileApproval = null;
-    mobileUri = "";
+    wcProvider = null;
   }
 }
 
@@ -232,40 +211,5 @@ export async function doSwitchChain(
     } else { throw e; }
   }
 }
-
-// ====== WALLET LIST ======
-export interface MobileWalletInfo {
-  key: string;
-  name: string;
-  color: string;
-  deepLink: (wcUri: string) => string;
-}
-
-export const MOBILE_WALLETS: MobileWalletInfo[] = [
-  {
-    key: "metamask",
-    name: "MetaMask",
-    color: "#F5A623",
-    deepLink: (uri) => `https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`,
-  },
-  {
-    key: "trust",
-    name: "Trust Wallet",
-    color: "#3375BB",
-    deepLink: (uri) => `https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`,
-  },
-  {
-    key: "rainbow",
-    name: "Rainbow",
-    color: "#FF6B6B",
-    deepLink: (uri) => `https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`,
-  },
-  {
-    key: "safe",
-    name: "Safe Wallet",
-    color: "#12FF80",
-    deepLink: (uri) => `https://app.safe.global/wc?uri=${encodeURIComponent(uri)}`,
-  },
-];
 
 declare global { interface Window { ethereum?: any } }
