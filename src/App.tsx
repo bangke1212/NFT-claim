@@ -7,6 +7,8 @@ import {
   disconnectWallet,
   doSwitchChain,
   autoConnectMetaMask,
+  connectMetaMask,
+  hasMetaMask,
   type WalletState,
   type WalletType,
 } from "@/lib/wallet";
@@ -39,10 +41,14 @@ export default function App() {
   const notify = useCallback((m: string, t = "info") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
   const copy = (x: string) => { navigator.clipboard?.writeText(x); notify("Copied!"); };
 
-  // ====== AUTO-CONNECT METAMASK ON MOUNT ======
+  // ====== AUTO-CONNECT ON MOUNT ======
+  // Step 1: silent check (eth_accounts)
+  // Step 2: if came from MetaMask deep link (?mm_connect=1) → auto prompt connect
   useEffect(() => {
     let cancelled = false;
+
     async function tryAutoConnect() {
+      // 1) Silent: eth_accounts
       try {
         const ws = await autoConnectMetaMask();
         if (cancelled) return;
@@ -52,13 +58,36 @@ export default function App() {
           setAddr(ws.address);
           setCid(ws.chainId);
           setBal(ws.balance);
+          setAutoConnecting(false);
+          return;
         }
-      } catch {
-        // silent — user belum authorize
-      } finally {
-        if (!cancelled) setAutoConnecting(false);
+      } catch { /* silent */ }
+
+      // 2) Deep link dari MetaMask Mobile? Auto-prompt connect
+      const fromMM = new URLSearchParams(window.location.search).has("mm_connect");
+      if (fromMM && hasMetaMask() && !cancelled) {
+        try {
+          const ws = await connectMetaMask();
+          if (cancelled) return;
+          if (ws) {
+            setWalletState(ws);
+            setWalletType("metamask");
+            setAddr(ws.address);
+            setCid(ws.chainId);
+            setBal(ws.balance);
+            notify("Connected to MetaMask Mobile!", "success");
+            // Bersihkan URL param tanpa reload
+            const clean = window.location.href.replace(/[?&]mm_connect=1/, "").replace(/\?$/, "");
+            window.history.replaceState({}, "", clean);
+          }
+        } catch {
+          // user reject atau error — biarkan manual
+        }
       }
+
+      if (!cancelled) setAutoConnecting(false);
     }
+
     tryAutoConnect();
     return () => { cancelled = true; };
   }, []);

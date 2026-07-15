@@ -10,13 +10,40 @@ export interface WalletState {
   type: WalletType;
 }
 
+// ====== DETECTION ======
+
+/** True jika MetaMask tersedia (extension desktop ATAU MetaMask Mobile browser) */
+export function hasMetaMask(): boolean {
+  return typeof window !== "undefined" && !!window.ethereum;
+}
+
+/** True jika device mobile (Android/iOS) */
+export function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+/** Deep link untuk buka dApp ini di MetaMask Mobile browser */
+export function getMetaMaskDeepLink(): string {
+  const host = window.location.host;   // e.g. nft-claim.vercel.app
+  const path = window.location.pathname; // e.g. /
+  const url = `https://metamask.app.link/dapp/${host}${path}?mm_connect=1`;
+  return url;
+}
+
+/** Deep link ke Play Store MetaMask (fallback kalau belum install) */
+export function getMetaMaskPlayStoreLink(): string {
+  return "https://play.google.com/store/apps/details?id=io.metamask";
+}
+
 // ====== CONNECT METAMASK ======
 export async function connectMetaMask(): Promise<WalletState> {
-  if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("No browser wallet detected. Install MetaMask or Rabby.");
+  if (!hasMetaMask()) {
+    throw new Error("MetaMask tidak tersedia. Buka di MetaMask Mobile browser atau install extension.");
   }
   const p = new ethers.BrowserProvider(window.ethereum);
   const accs: string[] = await p.send("eth_requestAccounts", []);
+  if (!accs.length) throw new Error("No accounts found");
   const net = await p.getNetwork();
   const bal = await p.getBalance(accs[0]);
   return {
@@ -28,9 +55,9 @@ export async function connectMetaMask(): Promise<WalletState> {
   };
 }
 
-// ====== AUTO-CONNECT METAMASK (silent, no popup) ======
+// ====== AUTO-CONNECT METAMASK (silent) ======
 export async function autoConnectMetaMask(): Promise<WalletState | null> {
-  if (typeof window === "undefined" || !window.ethereum) return null;
+  if (!hasMetaMask()) return null;
   try {
     const p = new ethers.BrowserProvider(window.ethereum);
     const accs: string[] = await p.send("eth_accounts", []);
@@ -51,9 +78,8 @@ export async function autoConnectMetaMask(): Promise<WalletState | null> {
 
 // ====== DISCONNECT ======
 export async function disconnectWallet(): Promise<void> {
-  // MetaMask doesn't have a programmatic disconnect via ethers.
-  // The user disconnects by removing the dapp from MetaMask settings.
-  // We just clear state in the React component.
+  // MetaMask tidak punya disconnect programmatic via ethers.
+  // User disconnect dari settings MetaMask. Kita clear state di React.
 }
 
 // ====== SWITCH CHAIN ======
